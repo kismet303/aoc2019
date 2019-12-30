@@ -2,7 +2,7 @@ intcode <- function(input,
                     pointer = 1, 
                     m_inputs = 1, 
                     relative_base = 0,
-                    full_log = FALSE ) {
+                    full_log = 0 ) {
   
   output <- numeric()
   m_inputs_counter <- 1
@@ -34,7 +34,7 @@ intcode <- function(input,
     mode = p$mode
     if (opcode %in% c(1,2,7,8)) n_parameters <- 3
     if (opcode %in% c(3,4,9)) n_parameters <- 1
-    if(full_log) print(paste("process code:", z, "opcode:", opcode))
+    if(full_log > 1) print(paste("process code:", z, "opcode:", opcode))
     
 
 # Process opcodes ---------------------------------------------------------
@@ -56,7 +56,7 @@ intcode <- function(input,
         status <- "PAUSED"
         
       } else {
-        print(paste0("inputting value: ", input_value, " at position ", resolve(input, pointer+1, mode[1]) ))
+        if (full_log >0) print(paste0("inputting value: ", input_value, " at position ", resolve(input, pointer+1, mode[1]) ))
         input[input[pointer +1] + 1 + relative_base * as.numeric(mode[1]==2)] <- input_value
         m_inputs_counter <- m_inputs_counter + 1
       }
@@ -70,7 +70,7 @@ intcode <- function(input,
       # if(outputs_n %% 2 == 1)  outputs_direction <- c(outputs_direction, output)
       # if(outputs_n %% 2 == 0)  m_inputs <- c(m_inputs, output)
 
-     print(paste0("Output: ", sprintf("%.0f", this_output )))
+     if (full_log >0) print(paste0("Output: ", sprintf("%.0f", this_output )))
      # break
  
     } else if (opcode == 5) {
