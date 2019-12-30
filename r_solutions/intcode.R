@@ -1,8 +1,8 @@
 intcode <- function(input, 
-                    pointer=1, 
+                    pointer = 1, 
                     m_inputs = 1, 
-                    relative_base=0,
-                    full_log=FALSE ) {
+                    relative_base = 0,
+                    full_log = FALSE ) {
   
   output <- numeric()
   m_inputs_counter <- 1
