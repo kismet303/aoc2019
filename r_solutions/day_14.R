@@ -1,73 +1,76 @@
-fpath <- "r_solutions/day_14input.txt"
+# in progress
+# notes explore matrix representation of reactions
+library(dplyr)
+library(purrr)
 
-lut <-
-  do.call(rbind, lapply(readLines(fpath), function(reaction) {
+fpath <- "inputs/day_14.txt"
+fpath <- "inputs/day_14_test.txt"
+
+ll <-  readLines(fpath)
+
+reactions <- 
+  tibble(y= map(ll, ~ strsplit(.x, " => ")[[1]])) %>% 
+  mutate(chem_in = map_chr(y, ~unlist(pluck(.x)[1]))) %>% 
+  mutate(chem_out = map_chr(y, ~unlist(pluck(.x)[2]))) %>% 
+  separate_rows(chem_in, sep=",") %>% 
+  mutate(chem_in = trimws(chem_in)) %>% 
+  separate(chem_in, sep = " ", into=c("quantity_in", "chemical_in")) %>% 
+  separate(chem_out, sep = " ", into=c("quantity_out", "chemical_out")) %>% 
+  mutate(quantity_out = as.integer(quantity_out),
+         quantity_in = as.integer(quantity_in)) %>% 
+  select(-y)
+
+# recurse over each chemical  starting with fuel
+chemical <- "FUEL"
+amount <- 1
+reserves <- list()
+
+ore_required <- function(chemical, amount) {
+  if (chemical %in% reactions$chemical_out) {
     
-    fml_sides <-
-      lapply(strsplit(reaction, " => ")[[1]], function(xhs) {
-        lapply(strsplit(xhs, ", "), function(chemqs) {
-          do.call(rbind, lapply(strsplit(chemqs, " "), function(chemq) {
-            data.frame(chemical = chemq[2], quantity = as.numeric(chemq[1]))
-          }))
-        })[[1]]
-      })
+    reaction <- filter(reactions, chemical_out == chemical)
+    min_produceable <- reaction$quantity_out[1]
+    amount_made <- ceiling(amount / min_produceable) * min_produceable
     
-    merge(fml_sides[[2]], fml_sides[[1]],
-          by = character(0), suffixes = c("_out", "_in"))
-    
-  }))
-
-mround <- function(x,base){
-  base*round((ceiling(x/base)))
-}
-
-
-t_data <- function(chemical){
-  lut %>% 
-    filter(chemical_out == chemical) %>% 
-    tidyr::spread(chemical_in, quantity_in, fill = 0)
-  }
-
-input <- map_dfr(unique(lut$chemical_out), t_data) %>% 
-  mutate_all(tidyr::replace_na, 0) %>% 
-  rename(makes = chemical_out) %>% 
-  rename(makes_n = quantity_out)
-
-start_materials <-
-  input %>% 
-  filter(ORE != 0) %>% 
-  pull(makes)
-
-i_materials <- 
-  input %>% 
-  filter(ORE == 0, makes != "FUEL") %>% 
-  pull(makes)
-
-x <- input[input$makes=="FUEL", !names(input) %in% c("makes", "makes_n")]
-while(sum(x[i_materials]) != 0) {
-  for (i in i_materials) {
-    if(x[[i]] > 0 ) {
-      print(glue::glue("i={i}"))
-      min_make <- filter(input, makes==i) %>% pull(makes_n)
-      replace <- input[input$makes == i, !names(input) %in% c("makes", "makes_n")] * x[[i]]/min_make
-      print(replace)
-      
-      for(j in seq(length(replace))) {
-        if (replace[j] != 0) {replace[j] <- mround(replace[j], min_make) }
-      }
-
-      print(replace)
-      x <- x + replace
-      x[[i]] <- 0
-      print(x)
+    if(amount %% min_produceable != 0) {
+      surplus <- amount_made - amount
+      reserves[[chemical]] <<- surplus
     }
+    
+    map2(reaction$chemical_in, 
+         reaction$quantity_in, 
+         ~ ore_required(.x, (amount_made / min_produceable) * .y)) 
+    
+    
+    # if chemical is required but not producable, it must be ORE
+  } else {
+    stopifnot(chemical == "ORE")
+    amount
   }
 }
 
-out <- list()
-for(j in start_materials) {
-  rule <- filter(input, makes == j)
-  out[[j]] <- as.integer(rule$ORE) * ceiling(x[[j]] / as.integer(rule$makes_n))
-}
+x <- ore_required("FUEL", 1)
+reserves
+sum(unlist(x))
 
-sum(unlist(out))
+# Currently have 165 and not 172 because not using reserves
+
+
+#- Base R way to generate data for reference:
+
+# reactions <-
+#   do.call(rbind, lapply(readLines(fpath), function(reaction) {
+#     
+#     fml_sides <-
+#       lapply(strsplit(reaction, " => ")[[1]], function(xhs) {
+#         lapply(strsplit(xhs, ", "), function(chemqs) {
+#           do.call(rbind, lapply(strsplit(chemqs, " "), function(chemq) {
+#             data.frame(chemical = chemq[2], quantity = as.numeric(chemq[1]))
+#           }))
+#         })[[1]]
+#       })
+#     
+#     merge(fml_sides[[2]], fml_sides[[1]],
+#           by = character(0), suffixes = c("_out", "_in"))
+#     
+#   }))
